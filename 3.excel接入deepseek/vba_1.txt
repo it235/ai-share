@@ -1,0 +1,29 @@
+   Sub CallDeepSeekAPI()
+       Dim api_url As String, api_key As String
+       Dim question As String, response As String
+       Dim httpReq As Object
+       
+       ' 配置API参数
+       api_url = "https://api.siliconflow.cn/v1/chat/completions"  ' 替换为实际API地址
+       api_key = "sk-xxxxx"                           ' 替换为你的API密钥
+       question = Range("A1").Value                               ' 从单元格A1读取问题
+       
+       ' 创建HTTP请求对象
+       Set httpReq = CreateObject("MSXML2.ServerXMLHTTP")
+       httpReq.Open "POST", api_url, False
+       httpReq.setRequestHeader "Content-Type", "application/json"
+       httpReq.setRequestHeader "Authorization", "Bearer " & api_key
+       
+       ' 构建请求体（JSON格式）
+       Dim requestBody As String
+       requestBody = "{""model"": ""deepseek-ai/DeepSeek-V3"", ""messages"": [{""role"": ""user"", ""content"": """ & question & """}], ""temperature"": 0}"
+       
+       ' 发送请求并获取响应
+       httpReq.send requestBody
+       response = httpReq.responseText
+       
+       ' 解析JSON响应中的content字段（需引用JSON解析库如VBA-JSON）
+       Dim parsedResponse As Dictionary
+       Set parsedResponse = JsonConverter.ParseJson(response)
+       Range("B1").Value = parsedResponse("choices")(1)("message")("content")
+   End Sub

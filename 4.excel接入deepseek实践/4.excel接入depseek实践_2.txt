@@ -1,0 +1,93 @@
+Sub CallDeepSeekAPI()
+    Dim http As Object
+    Dim apiUrl As String
+    Dim apiKey As String
+    Dim requestBody As String
+    Dim response As String
+    Dim ws As Worksheet
+    Dim i As Integer
+
+    Dim lines() As String
+    Dim columns() As String
+    
+    ' 设置 API 信息
+    apiUrl = "https://api.siliconflow.cn/v1/chat/completions" ' 替换为实际的 API URL
+    apiKey = "sk-ervggzoenrzixueavrzfdqwazjxbnhenhqpfzotzntmrrcxu" ' 替换为您的 API Key
+
+    ' 创建 HTTP 对象
+    Set http = CreateObject("MSXML2.ServerXMLHTTP")
+
+    ' 设置请求内容（根据 API 文档调整）
+    'requestBody = "{""query"": ""请按照采购日期、商品、单价、重量整理数据""}"'
+    
+    
+    ' 获取查询内容和数据
+    With ThisWorkbook.Sheets("Sheet1") ' 假设数据和问题在 Sheet1 中
+        question = .Range("A1").Value & vbCrLf & .Range("A2").Value & vbCrLf & _
+               .Range("B2").Value & vbCrLf & .Range("A3").Value & vbCrLf & _
+               .Range("B3").Value & vbCrLf & .Range("A4").Value & vbCrLf & _
+               .Range("B4").Value & vbCrLf & .Range("A5").Value & vbCrLf & _
+               .Range("B5").Value ' 采集 A2:A3 和 B1:B3 中的数据
+    End With
+    
+    Dim result As String
+    result = Replace(question, "\", "\\")
+    result = Replace(result, """", "\""")
+    result = Replace(result, vbCr, "\r")
+    result = Replace(result, vbLf, "\n")
+    result = Replace(result, vbTab, "\t")
+    result = Replace(result, vbBack, "\b")
+    result = Replace(result, Chr(12), "\f")
+    
+    requestBody = "{""model"": ""deepseek-ai/DeepSeek-V3"", ""messages"": [{""role"": ""user"", ""content"": """ & result & """}], ""temperature"": 0}"
+
+    ' 发送 POST 请求
+    http.Open "POST", apiUrl, False
+    http.setRequestHeader "Content-Type", "application/json"
+    http.setRequestHeader "Authorization", "Bearer " & apiKey
+    http.Send requestBody
+
+    ' 获取响应
+    response = http.ResponseText
+
+    ' 解析 JSON 响应（需要引用 JSON 解析库，如 VBA-JSON）
+    ' 假设响应格式为：[{"采购日期":"2025/1/27","商品":"牛肉","单价":35,"重量":2}, ...]
+     'Set parsedResponse = JsonConverter.ParseJson(response) 需导入 VBA-JSON 库
+
+    Dim parsedResponse As Dictionary
+    Set parsedResponse = JsonConverter.ParseJson(response)
+    
+    Set wsOutput = ThisWorkbook.Sheets("Sheet2") ' 输出结果
+
+    ' 清空输出表
+    wsOutput.Cells.Clear
+
+
+    Dim cellValue As String
+    cellValue = parsedResponse("choices")(1)("message")("content")
+    
+    ' 按行拆分
+    lines = Split(cellValue, vbCrLf)
+
+    ' 写入表头
+    columns = Split(Trim(lines(0)), "|") ' 第一行是表头
+    For i = 1 To UBound(columns)
+        wsOutput.Cells(1, i).Value = Trim(columns(i))
+    Next i
+
+    ' 写入表格数据（跳过分隔线和表头）
+    For i = 2 To UBound(lines)
+        If Trim(lines(i)) <> "" And Not Left(Trim(lines(i)), 1) = "-" Then ' 跳过空行和分隔线
+            columns = Split(Trim(lines(i)), "|")
+            For j = 1 To UBound(columns) - 1
+                wsOutput.Cells(i, j).Value = Trim(columns(j))
+            Next j
+        End If
+    Next i
+   
+    ' 提示完成
+    MsgBox "数据已成功写入 Sheet2！", vbInformation
+End Sub
+
+
+
